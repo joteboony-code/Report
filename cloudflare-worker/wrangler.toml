@@ -1,0 +1,18 @@
+name = "edms-line-worker"
+main = "src/worker.js"
+compatibility_date = "2026-06-08"
+
+[triggers]
+# 07:00 Bangkok time = 00:00 UTC.
+crons = ["0 0 * * *"]
+
+[vars]
+EDMS_LOGIN_URL = "https://www.castles-th.com/login"
+EDMS_ALERT_ENABLED = "true"
+ALERT_TIME = "07:00"
+ONLY_TODAY = "true"
+NOTIFY_WHEN_EMPTY = "true"
+
+[[kv_namespaces]]
+binding = "edms_config"
+id = "1bdb34e6939e47e0b736199ccba73e8f"

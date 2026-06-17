@@ -1,0 +1,20 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Runtime data
+alert_history.json
+scheduler_state.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Node / Cloudflare
+node_modules/
+.wrangler/
+**/.cache/
+
+# Screenshots / artifacts
+*.png
