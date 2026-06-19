@@ -513,6 +513,8 @@ def build_message(report):
     install = []
     deinstall = []
     service = []
+    reload_jobs = []
+    initial_jobs = []
 
     for row in report["remaining_jobs"]:
         service.append(terminal_id(row))
@@ -521,10 +523,14 @@ def build_message(report):
         text = row_text(row).lower()
         if "de-install" in text or "de installation" in text:
             deinstall.append(terminal_id(row))
+        elif "reload" in text:
+            reload_jobs.append(terminal_id(row))
+        elif "initial" in text:
+            initial_jobs.append(terminal_id(row))
         else:
             install.append(terminal_id(row))
 
-    total = len(service) + len(install) + len(deinstall)
+    total = len(service) + len(install) + len(deinstall) + len(reload_jobs) + len(initial_jobs)
     lines = [f"Plan onsite {today}"]
     if service:
         lines.append("Service")
@@ -535,6 +541,12 @@ def build_message(report):
     if deinstall:
         lines.append("De-install")
         lines.extend(deinstall)
+    if reload_jobs:
+        lines.append("Reload")
+        lines.extend(reload_jobs)
+    if initial_jobs:
+        lines.append("Initial")
+        lines.extend(initial_jobs)
 
     if total == 0:
         lines.append("standby service")

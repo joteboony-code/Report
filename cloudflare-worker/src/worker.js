@@ -667,11 +667,17 @@ function buildMessage(report) {
   const service = report.remainingJobs.map((row) => terminalId(row));
   const install = [];
   const deinstall = [];
+  const reload = [];
+  const initial = [];
 
   for (const row of report.fieldJobs) {
     const text = rowText(row).toLowerCase();
     if (text.includes("de-install") || text.includes("de installation")) {
       deinstall.push(terminalId(row));
+    } else if (text.includes("reload")) {
+      reload.push(terminalId(row));
+    } else if (text.includes("initial")) {
+      initial.push(terminalId(row));
     } else {
       install.push(terminalId(row));
     }
@@ -687,7 +693,13 @@ function buildMessage(report) {
   if (deinstall.length) {
     lines.push("De-install", ...deinstall);
   }
-  if (!service.length && !install.length && !deinstall.length) {
+  if (reload.length) {
+    lines.push("Reload", ...reload);
+  }
+  if (initial.length) {
+    lines.push("Initial", ...initial);
+  }
+  if (!service.length && !install.length && !deinstall.length && !reload.length && !initial.length) {
     lines.push("standby service");
   }
   lines.push(TARGET_PROVINCE);
@@ -982,6 +994,8 @@ function pageHtml() {
     .pill-type.install { background: #e7f0fe; color: #1f5fbf; }
     .pill-type.deinstall { background: #fdecec; color: #c0392b; }
     .pill-type.service { background: #e5f8ee; color: var(--green-dark); }
+    .pill-type.reload { background: #fdf0e0; color: #a65a00; }
+    .pill-type.initial { background: #f3e8ff; color: #6b21a8; }
     .bubble { background: var(--green); color: #fff; border-radius: 16px 16px 16px 4px; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; font-size: 13.5px; line-height: 1.6; max-width: 560px; box-shadow: 0 4px 14px rgba(6, 199, 85, 0.25); }
     .run-status { display: none; align-items: center; gap: 10px; margin-top: 14px; padding: 11px 14px; border-radius: 10px; background: #f7fafb; border: 1px solid var(--line); font-size: 13.5px; color: #3a4a55; }
     .run-status.active { display: flex; }
@@ -1236,16 +1250,23 @@ function pageHtml() {
       const fieldRows = report.fieldJobs || [];
       const install = [];
       const deinstall = [];
+      const reload = [];
+      const initial = [];
       for (const row of fieldRows) {
         const jt = String(row['ประเภทงาน'] || '').toLowerCase();
-        if (jt.includes('de')) deinstall.push(row); else install.push(row);
+        if (jt.includes('de')) deinstall.push(row);
+        else if (jt.includes('reload')) reload.push(row);
+        else if (jt.includes('initial')) initial.push(row);
+        else install.push(row);
       }
-      const total = service.length + install.length + deinstall.length;
+      const total = service.length + install.length + deinstall.length + reload.length + initial.length;
       jobBadges.innerHTML =
         '<span class="badge">รวม <b>' + total + '</b></span>'
         + '<span class="badge green">Service <b>' + service.length + '</b></span>'
         + '<span class="badge blue">Install <b>' + install.length + '</b></span>'
-        + '<span class="badge amber">De-install <b>' + deinstall.length + '</b></span>';
+        + '<span class="badge amber">De-install <b>' + deinstall.length + '</b></span>'
+        + (reload.length ? '<span class="badge" style="background:#fdf0e0;color:#a65a00">Reload <b>' + reload.length + '</b></span>' : '')
+        + (initial.length ? '<span class="badge" style="background:#f3e8ff;color:#6b21a8">Initial <b>' + initial.length + '</b></span>' : '');
 
       if (total === 0) {
         jobTables.innerHTML = '<p class="empty-note">วันนี้ไม่มีงานใน 2 หน้าที่ตั้งไว้</p>';
@@ -1254,6 +1275,8 @@ function pageHtml() {
         service.forEach((r) => { rows += jobRowHtml('Service', 'service', r); });
         install.forEach((r) => { rows += jobRowHtml('Install', 'install', r); });
         deinstall.forEach((r) => { rows += jobRowHtml('De-install', 'deinstall', r); });
+        reload.forEach((r) => { rows += jobRowHtml('Reload', 'reload', r); });
+        initial.forEach((r) => { rows += jobRowHtml('Initial', 'initial', r); });
         jobTables.innerHTML = '<div class="table-wrap"><table><thead><tr>'
           + '<th>ประเภท</th><th>TID</th><th>ร้านค้า</th><th>จังหวัด</th><th>วันที่ Plan</th>'
           + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
