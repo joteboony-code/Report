@@ -257,7 +257,7 @@ async function collectJobs(env, options) {
     if (!isTargetChonburiArea(enriched)) {
       continue;
     }
-    if (options.onlyToday && !isInRequestToPlanRange(enriched, today)) {
+    if (options.onlyToday && normalizeThaiDate(detailPlanDate(enriched)) !== today) {
       continue;
     }
     remainingJobs.push(enriched);

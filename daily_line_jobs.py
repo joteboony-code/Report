@@ -483,7 +483,7 @@ def collect_jobs(only_today=True):
             errors.append(f"{row.get('Terminal ID URL') or 'remaining detail'}: {exc}")
         if not is_target_chonburi_area(row):
             continue
-        if only_today and not is_in_request_to_plan_range(row, today):
+        if only_today and not has_plan_date(row, today):
             continue
         remaining_jobs.append(row)
 
