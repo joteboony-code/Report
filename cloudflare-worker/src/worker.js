@@ -258,7 +258,7 @@ async function collectJobs(env, options) {
   const fieldJobs = [];
   for (const row of fieldRows) {
     const enriched = await enrichJobDetail(row, session, errors, "field detail");
-    if (options.onlyToday && normalizeThaiDate(enriched["Detail Plan Date"]) !== today) {
+    if (options.onlyToday && normalizeThaiDate(detailPlanDate(enriched)) !== today) {
       continue;
     }
     fieldJobs.push(enriched);
@@ -530,8 +530,31 @@ function parseDetailFields(html) {
       fields[text.replace(/[:.]$/, "")] = texts[index + 1];
     }
   });
+  applyDateFallbacks(fields);
 
   return fields;
+}
+
+function applyDateFallbacks(fields) {
+  const allText = fields["All Text"] || "";
+  const dateLabels = [
+    ["Request Date", /Request\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i],
+    ["Plan Date", /Plan\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i],
+    ["SLA Date", /SLA\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i],
+  ];
+  const timeLabels = [
+    ["Request Time", /Request\s*Time:\s*([0-2]?\d:[0-5]\d)/i],
+    ["Plan Time", /Plan\s*Time:\s*([0-2]?\d:[0-5]\d)/i],
+    ["SLA Time", /SLA\s*Time:\s*([0-2]?\d:[0-5]\d)/i],
+  ];
+  for (const [key, pattern] of [...dateLabels, ...timeLabels]) {
+    if (!fields[key]) {
+      const match = allText.match(pattern);
+      if (match) {
+        fields[key] = match[1];
+      }
+    }
+  }
 }
 
 function htmlToTextList(html) {
@@ -632,11 +655,20 @@ function thaiDateToDate(value) {
 function isInRequestToPlanRange(row, today) {
   const todayDate = thaiDateToDate(today);
   const requestDate = thaiDateToDate(firstValue(row, ["Detail Request Date", "Job Open Date"]));
-  const planDate = thaiDateToDate(firstValue(row, ["Detail Plan Date", "SLA Date"]));
+  const planDate = thaiDateToDate(detailPlanDate(row) || firstValue(row, ["SLA Date"]));
   if (!todayDate || !requestDate || !planDate) {
     return false;
   }
   return requestDate <= todayDate && todayDate <= planDate;
+}
+
+function detailPlanDate(row) {
+  if (row["Detail Plan Date"]) {
+    return row["Detail Plan Date"];
+  }
+  const allText = row["Detail All Text"] || row["All Text"] || rowText(row);
+  const match = String(allText).match(/Plan\s*Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  return match ? match[1] : "";
 }
 
 function isTargetChonburiArea(row) {
