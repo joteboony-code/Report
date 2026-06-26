@@ -83,19 +83,6 @@ export default {
         return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
       }
       const sendLine = url.searchParams.get("send") === "1";
-      if (sendLine) {
-        const configStore = getConfigStore(env);
-        const todayKey = bangkokDateKey();
-        if (configStore && (await configStore.get("last_sent_date")) === todayKey && url.searchParams.get("force") !== "1") {
-          return jsonResponse(
-            {
-              ok: false,
-              error: "Already sent today. Use dry run, or force send only when you intentionally want another LINE message.",
-            },
-            409,
-          );
-        }
-      }
       const result = await runAndMaybeNotify(env, { sendLine, source: "manual" });
       return jsonResponse(result, result.ok ? 200 : 500);
     }
