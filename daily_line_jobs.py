@@ -435,6 +435,19 @@ def is_in_request_to_plan_range(row, today):
     return request_date <= today_date <= plan_date
 
 
+def is_in_request_to_sla_range(row, today):
+    today_date = thai_date_to_date(today)
+    request_date = thai_date_to_date(
+        get_first_value(row, ["Detail Request Date", "Job Open Date"])
+    )
+    sla_date = thai_date_to_date(
+        get_first_value(row, ["Detail SLA Date", "SLA Date"])
+    )
+    if not today_date or not request_date or not sla_date:
+        return False
+    return request_date <= today_date <= sla_date
+
+
 def collect_jobs(only_today=True):
     _, today = thai_today()
     pages = {}
@@ -483,7 +496,7 @@ def collect_jobs(only_today=True):
             errors.append(f"{row.get('Terminal ID URL') or 'remaining detail'}: {exc}")
         if not is_target_chonburi_area(row):
             continue
-        if only_today and not is_in_request_to_plan_range(row, today):
+        if only_today and not is_in_request_to_sla_range(row, today):
             continue
         remaining_jobs.append(row)
 

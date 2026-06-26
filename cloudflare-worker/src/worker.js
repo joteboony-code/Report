@@ -257,7 +257,7 @@ async function collectJobs(env, options) {
     if (!isTargetChonburiArea(enriched)) {
       continue;
     }
-    if (options.onlyToday && !isInRequestToPlanRange(enriched, today)) {
+    if (options.onlyToday && !isInRequestToSlaRange(enriched, today)) {
       continue;
     }
     remainingJobs.push(enriched);
@@ -647,6 +647,16 @@ function isInRequestToPlanRange(row, today) {
     return false;
   }
   return requestDate <= todayDate && todayDate <= planDate;
+}
+
+function isInRequestToSlaRange(row, today) {
+  const todayDate = thaiDateToDate(today);
+  const requestDate = thaiDateToDate(firstValue(row, ["Detail Request Date", "Job Open Date"]));
+  const slaDate = thaiDateToDate(firstValue(row, ["Detail SLA Date", "SLA Date"]));
+  if (!todayDate || !requestDate || !slaDate) {
+    return false;
+  }
+  return requestDate <= todayDate && todayDate <= slaDate;
 }
 
 function detailPlanDate(row) {
