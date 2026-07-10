@@ -669,14 +669,18 @@ function detailPlanDate(row) {
 }
 
 function isTargetChonburiArea(row) {
-  const text = rowText(row);
-  const province = firstValue(row, ["จังหวัด", "Detail Province", "Province"]);
-  return (province.includes(TARGET_PROVINCE) || text.includes(TARGET_PROVINCE)) && Boolean(targetDistrict(row));
+  const text = areaText(row);
+  const province = firstValue(row, ["จังหวัด", "Detail จังหวัด", "Detail Province", "Province"]);
+  const hasChonburi = province.includes(TARGET_PROVINCE) || text.includes(TARGET_PROVINCE) || text.toUpperCase().includes("CHONBURI");
+  return hasChonburi && Boolean(targetDistrict(row));
 }
 
 function targetDistrict(row) {
-  const text = rowText(row);
-  return TARGET_DISTRICTS.find((district) => text.includes(district)) || "";
+  const text = areaText(row);
+  return TARGET_DISTRICTS.find((district) => {
+    const markers = [`อ.${district}`, `อำเภอ${district}`, `เขต${district}`, district];
+    return markers.some((marker) => text.includes(marker));
+  }) || "";
 }
 
 function firstValue(row, keys) {
@@ -690,6 +694,24 @@ function firstValue(row, keys) {
 
 function rowText(row) {
   return Object.values(row).filter(Boolean).join(" ");
+}
+
+function areaText(row) {
+  return [
+    row["จังหวัด"],
+    row["Detail Site Address"],
+    extractSiteAddress(row),
+    row["Detail แขวง/ตำบล"],
+    row["Detail เขต/อำเภอ"],
+    row["Detail จังหวัด"],
+    row["Detail Sale Slip Line2"],
+  ].filter(Boolean).join(" ");
+}
+
+function extractSiteAddress(row) {
+  const text = String(row["Detail All Text"] || row["All Text"] || "");
+  const match = text.match(/Site Address:\s*([\s\S]*?)(?:Service SLA:|Contact Name:|Phone No:|Marketing Bank:|ชื่อร้านค้า:|Sale Slip Line1:)/);
+  return match ? match[1].trim() : "";
 }
 
 function buildMessage(report) {

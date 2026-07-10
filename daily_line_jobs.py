@@ -407,18 +407,49 @@ def row_text(row):
     return " ".join(str(value) for value in row.values() if value)
 
 
+def area_text(row):
+    values = [
+        row.get("จังหวัด"),
+        row.get("Detail Site Address"),
+        extract_site_address(row),
+        row.get("Detail แขวง/ตำบล"),
+        row.get("Detail เขต/อำเภอ"),
+        row.get("Detail จังหวัด"),
+        row.get("Detail Sale Slip Line2"),
+    ]
+    return " ".join(str(value) for value in values if value)
+
+
+def extract_site_address(row):
+    text = str(row.get("Detail All Text") or row.get("All Text") or "")
+    if "Site Address:" not in text:
+        return ""
+    after = text.split("Site Address:", 1)[1]
+    for marker in ["Service SLA:", "Contact Name:", "Phone No:", "Marketing Bank:", "ชื่อร้านค้า:", "Sale Slip Line1:"]:
+        if marker in after:
+            after = after.split(marker, 1)[0]
+            break
+    return after.strip()
+
+
 def target_district(row):
-    text = row_text(row)
+    text = area_text(row)
     for district in TARGET_DISTRICTS:
-        if district in text:
+        district_markers = [
+            f"อ.{district}",
+            f"อำเภอ{district}",
+            f"เขต{district}",
+            district,
+        ]
+        if any(marker in text for marker in district_markers):
             return district
     return ""
 
 
 def is_target_chonburi_area(row):
-    text = row_text(row)
-    province = get_first_value(row, ["จังหวัด", "Detail Province", "Province"])
-    has_chonburi = TARGET_PROVINCE in province or TARGET_PROVINCE in text
+    text = area_text(row)
+    province = get_first_value(row, ["จังหวัด", "Detail จังหวัด", "Detail Province", "Province"])
+    has_chonburi = TARGET_PROVINCE in province or TARGET_PROVINCE in text or "CHONBURI" in text.upper()
     return has_chonburi and bool(target_district(row))
 
 
