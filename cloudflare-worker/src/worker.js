@@ -714,20 +714,44 @@ function extractSiteAddress(row) {
   return match ? match[1].trim() : "";
 }
 
+function jobCategory(row) {
+  const text = rowText(row).toLowerCase();
+  if (text.includes("de-install") || text.includes("de installation")) {
+    return "deinstall";
+  }
+  if (text.includes("service") || text.includes("ตรวจเช็ค") || text.includes("เปลี่ยนเครื่อง")) {
+    return "service";
+  }
+  if (text.includes("install") || text.includes("installation")) {
+    return "install";
+  }
+  return "install";
+}
+
 function buildMessage(report) {
-  const service = report.remainingJobs.map((row) => terminalId(row));
-  const install = [];
-  const deinstall = [];
+  const categories = {
+    service: [],
+    install: [],
+    deinstall: [],
+  };
+  const seen = new Set();
+
+  const addJob = (category, row) => {
+    const tid = terminalId(row);
+    if (seen.has(tid)) return;
+    seen.add(tid);
+    categories[category].push(tid);
+  };
 
   for (const row of report.fieldJobs) {
-    const text = rowText(row).toLowerCase();
-    if (text.includes("de-install") || text.includes("de installation")) {
-      deinstall.push(terminalId(row));
-    } else {
-      install.push(terminalId(row));
-    }
+    addJob(jobCategory(row), row);
   }
 
+  for (const row of report.remainingJobs) {
+    addJob("service", row);
+  }
+
+  const { service, install, deinstall } = categories;
   const lines = [`Plan onsite ${compactThaiDate(report.today)}`];
   if (service.length) {
     lines.push("Service", ...service);
@@ -1283,13 +1307,32 @@ function pageHtml() {
 
     function renderReport(report) {
       if (!report) { jobsCard.style.display = 'none'; return; }
-      const service = report.remainingJobs || [];
+      const service = [];
       const fieldRows = report.fieldJobs || [];
       const install = [];
       const deinstall = [];
+      const seen = new Set();
+      function addRow(bucket, row) {
+        const terminal = row['Terminal ID'] || row['TID'] || '-';
+        if (seen.has(terminal)) return;
+        seen.add(terminal);
+        bucket.push(row);
+      }
+      function dashboardJobCategory(row) {
+        const text = Object.values(row).filter(Boolean).join(' ').toLowerCase();
+        if (text.includes('de-install') || text.includes('de installation')) return 'deinstall';
+        if (text.includes('service') || text.includes('ตรวจเช็ค') || text.includes('เปลี่ยนเครื่อง')) return 'service';
+        if (text.includes('install') || text.includes('installation')) return 'install';
+        return 'install';
+      }
       for (const row of fieldRows) {
-        const jt = String(row['ประเภทงาน'] || '').toLowerCase();
-        if (jt.includes('de')) deinstall.push(row); else install.push(row);
+        const category = dashboardJobCategory(row);
+        if (category === 'deinstall') addRow(deinstall, row);
+        else if (category === 'service') addRow(service, row);
+        else addRow(install, row);
+      }
+      for (const row of (report.remainingJobs || [])) {
+        addRow(service, row);
       }
       const total = service.length + install.length + deinstall.length;
       jobBadges.innerHTML =

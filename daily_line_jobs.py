@@ -552,21 +552,42 @@ def terminal_id(row):
     return row.get("Terminal ID") or row.get("TID") or "-"
 
 
+def job_category(row):
+    text = row_text(row).lower()
+    if "de-install" in text or "de installation" in text:
+        return "deinstall"
+    if "service" in text or "ตรวจเช็ค" in text or "เปลี่ยนเครื่อง" in text:
+        return "service"
+    if "install" in text or "installation" in text:
+        return "install"
+    return "install"
+
+
 def build_message(report):
     today = compact_thai_date(report["today"])
-    install = []
-    deinstall = []
-    service = []
+    categories = {
+        "service": [],
+        "install": [],
+        "deinstall": [],
+    }
+    seen = set()
 
-    for row in report["remaining_jobs"]:
-        service.append(terminal_id(row))
+    def add_job(category, row):
+        tid = terminal_id(row)
+        if tid in seen:
+            return
+        seen.add(tid)
+        categories[category].append(tid)
 
     for row in report["field_jobs"]:
-        text = row_text(row).lower()
-        if "de-install" in text or "de installation" in text:
-            deinstall.append(terminal_id(row))
-        else:
-            install.append(terminal_id(row))
+        add_job(job_category(row), row)
+
+    for row in report["remaining_jobs"]:
+        add_job("service", row)
+
+    service = categories["service"]
+    install = categories["install"]
+    deinstall = categories["deinstall"]
 
     total = len(service) + len(install) + len(deinstall)
     lines = [f"Plan onsite {today}"]
