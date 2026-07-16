@@ -553,13 +553,23 @@ def terminal_id(row):
 
 
 def job_category(row):
-    text = row_text(row).lower()
+    type_text = " ".join(
+        str(row.get(key, ""))
+        for key in [
+            "ประเภทงาน",
+            "Detail Job Type",
+            "Job Type",
+            "Service Code",
+        ]
+        if row.get(key)
+    ).lower()
+    text = type_text or row_text(row).lower()
     if "de-install" in text or "de installation" in text:
         return "deinstall"
-    if "service" in text or "ตรวจเช็ค" in text or "เปลี่ยนเครื่อง" in text:
-        return "service"
     if "install" in text or "installation" in text:
         return "install"
+    if "service" in text or "ตรวจเช็ค" in text or "เปลี่ยนเครื่อง" in text:
+        return "service"
     return "install"
 
 

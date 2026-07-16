@@ -715,15 +715,21 @@ function extractSiteAddress(row) {
 }
 
 function jobCategory(row) {
-  const text = rowText(row).toLowerCase();
+  const typeText = [
+    row["ประเภทงาน"],
+    row["Detail Job Type"],
+    row["Job Type"],
+    row["Service Code"],
+  ].filter(Boolean).join(" ").toLowerCase();
+  const text = typeText || rowText(row).toLowerCase();
   if (text.includes("de-install") || text.includes("de installation")) {
     return "deinstall";
   }
-  if (text.includes("service") || text.includes("ตรวจเช็ค") || text.includes("เปลี่ยนเครื่อง")) {
-    return "service";
-  }
   if (text.includes("install") || text.includes("installation")) {
     return "install";
+  }
+  if (text.includes("service") || text.includes("ตรวจเช็ค") || text.includes("เปลี่ยนเครื่อง")) {
+    return "service";
   }
   return "install";
 }
@@ -1319,10 +1325,16 @@ function pageHtml() {
         bucket.push(row);
       }
       function dashboardJobCategory(row) {
-        const text = Object.values(row).filter(Boolean).join(' ').toLowerCase();
+        const typeText = [
+          row['ประเภทงาน'],
+          row['Detail Job Type'],
+          row['Job Type'],
+          row['Service Code'],
+        ].filter(Boolean).join(' ').toLowerCase();
+        const text = typeText || Object.values(row).filter(Boolean).join(' ').toLowerCase();
         if (text.includes('de-install') || text.includes('de installation')) return 'deinstall';
-        if (text.includes('service') || text.includes('ตรวจเช็ค') || text.includes('เปลี่ยนเครื่อง')) return 'service';
         if (text.includes('install') || text.includes('installation')) return 'install';
+        if (text.includes('service') || text.includes('ตรวจเช็ค') || text.includes('เปลี่ยนเครื่อง')) return 'service';
         return 'install';
       }
       for (const row of fieldRows) {
