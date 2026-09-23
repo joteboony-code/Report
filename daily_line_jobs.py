@@ -271,7 +271,19 @@ def first_table_rows_with_headers(html, fallback_headers):
     parser.feed(html)
     if not parser.tables:
         return []
-    raw_rows = parser.tables[0]
+    best_rows = []
+    best_score = -1
+    for raw_rows in parser.tables:
+        rows = rows_with_headers(raw_rows, fallback_headers)
+        view_count = sum(1 for row in rows if (row.get("#") or row.get("View") or "").lower() == "view")
+        score = len(rows) + view_count
+        if score > best_score:
+            best_score = score
+            best_rows = rows
+    return best_rows
+
+
+def rows_with_headers(raw_rows, fallback_headers):
     rows = []
     for raw_row in raw_rows:
         cells = raw_row

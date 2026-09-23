@@ -426,8 +426,23 @@ function firstTableRowsWithHeaders(html, fallbackHeaders) {
   if (tables.length === 0) {
     return [];
   }
+  let bestRows = [];
+  let bestScore = -1;
+  for (const table of tables) {
+    const rows = rowsWithHeaders(table, fallbackHeaders);
+    const viewCount = rows.filter((row) => String(row["#"] || row.View || "").toLowerCase() === "view").length;
+    const score = rows.length + viewCount;
+    if (score > bestScore) {
+      bestScore = score;
+      bestRows = rows;
+    }
+  }
+  return bestRows;
+}
+
+function rowsWithHeaders(tableRows, fallbackHeaders) {
   const rows = [];
-  for (const cells of tables[0]) {
+  for (const cells of tableRows) {
     const texts = cells.map((cell) => cell.text);
     if (!texts.some(Boolean)) {
       continue;
