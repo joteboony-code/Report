@@ -566,6 +566,8 @@ def job_category(row):
     text = type_text or row_text(row).lower()
     if "de-install" in text or "de installation" in text:
         return "deinstall"
+    if "initialization" in text or "initialisation" in text:
+        return "initial"
     if "install" in text or "installation" in text:
         return "install"
     if "service" in text or "ตรวจเช็ค" in text or "เปลี่ยนเครื่อง" in text:
@@ -577,33 +579,43 @@ def build_message(report):
     today = compact_thai_date(report["today"])
     categories = {
         "service": [],
+        "initial": [],
         "install": [],
         "deinstall": [],
     }
     seen = set()
+    field_tids = set()
 
     def add_job(category, row):
         tid = terminal_id(row)
-        if tid in seen:
+        seen_key = f"{category}:{tid}"
+        if seen_key in seen:
             return
-        seen.add(tid)
+        seen.add(seen_key)
         categories[category].append(tid)
 
     for row in report["field_jobs"]:
+        field_tids.add(terminal_id(row))
         add_job(job_category(row), row)
 
     for row in report["remaining_jobs"]:
+        if terminal_id(row) in field_tids:
+            continue
         add_job("service", row)
 
     service = categories["service"]
+    initial = categories["initial"]
     install = categories["install"]
     deinstall = categories["deinstall"]
 
-    total = len(service) + len(install) + len(deinstall)
+    total = len(service) + len(initial) + len(install) + len(deinstall)
     lines = [f"Plan onsite {today}"]
     if service:
         lines.append("Service")
         lines.extend(service)
+    if initial:
+        lines.append("Initial")
+        lines.extend(initial)
     if install:
         lines.append("Install")
         lines.extend(install)

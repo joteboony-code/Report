@@ -725,6 +725,9 @@ function jobCategory(row) {
   if (text.includes("de-install") || text.includes("de installation")) {
     return "deinstall";
   }
+  if (text.includes("initialization") || text.includes("initialisation")) {
+    return "initial";
+  }
   if (text.includes("install") || text.includes("installation")) {
     return "install";
   }
@@ -737,30 +740,38 @@ function jobCategory(row) {
 function buildMessage(report) {
   const categories = {
     service: [],
+    initial: [],
     install: [],
     deinstall: [],
   };
   const seen = new Set();
+  const fieldTids = new Set();
 
   const addJob = (category, row) => {
     const tid = terminalId(row);
-    if (seen.has(tid)) return;
-    seen.add(tid);
+    const seenKey = `${category}:${tid}`;
+    if (seen.has(seenKey)) return;
+    seen.add(seenKey);
     categories[category].push(tid);
   };
 
   for (const row of report.fieldJobs) {
+    fieldTids.add(terminalId(row));
     addJob(jobCategory(row), row);
   }
 
   for (const row of report.remainingJobs) {
+    if (fieldTids.has(terminalId(row))) continue;
     addJob("service", row);
   }
 
-  const { service, install, deinstall } = categories;
+  const { service, initial, install, deinstall } = categories;
   const lines = [`Plan onsite ${compactThaiDate(report.today)}`];
   if (service.length) {
     lines.push("Service", ...service);
+  }
+  if (initial.length) {
+    lines.push("Initial", ...initial);
   }
   if (install.length) {
     lines.push("Install", ...install);
@@ -768,7 +779,7 @@ function buildMessage(report) {
   if (deinstall.length) {
     lines.push("De-install", ...deinstall);
   }
-  if (!service.length && !install.length && !deinstall.length) {
+  if (!service.length && !initial.length && !install.length && !deinstall.length) {
     lines.push("standby service");
   }
   lines.push(TARGET_PROVINCE);
@@ -1053,6 +1064,7 @@ function pageHtml() {
     .badge b { font-size: 14px; }
     .badge.green { background: #e5f8ee; color: var(--green-dark); }
     .badge.blue { background: #e7f0fe; color: #1f5fbf; }
+    .badge.purple { background: #f1e9fe; color: #7040a0; }
     .badge.amber { background: #fdf0e0; color: #a65a00; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1061,6 +1073,7 @@ function pageHtml() {
     tbody tr:hover { background: #f7fafb; }
     .pill-type { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
     .pill-type.install { background: #e7f0fe; color: #1f5fbf; }
+    .pill-type.initial { background: #f1e9fe; color: #7040a0; }
     .pill-type.deinstall { background: #fdecec; color: #c0392b; }
     .pill-type.service { background: #e5f8ee; color: var(--green-dark); }
     .bubble { background: var(--green); color: #fff; border-radius: 16px 16px 16px 4px; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; font-size: 13.5px; line-height: 1.6; max-width: 560px; box-shadow: 0 4px 14px rgba(6, 199, 85, 0.25); }
@@ -1315,13 +1328,16 @@ function pageHtml() {
       if (!report) { jobsCard.style.display = 'none'; return; }
       const service = [];
       const fieldRows = report.fieldJobs || [];
+      const initial = [];
       const install = [];
       const deinstall = [];
       const seen = new Set();
-      function addRow(bucket, row) {
+      const fieldTerminals = new Set();
+      function addRow(bucket, row, category) {
         const terminal = row['Terminal ID'] || row['TID'] || '-';
-        if (seen.has(terminal)) return;
-        seen.add(terminal);
+        const seenKey = category + ':' + terminal;
+        if (seen.has(seenKey)) return;
+        seen.add(seenKey);
         bucket.push(row);
       }
       function dashboardJobCategory(row) {
@@ -1333,23 +1349,29 @@ function pageHtml() {
         ].filter(Boolean).join(' ').toLowerCase();
         const text = typeText || Object.values(row).filter(Boolean).join(' ').toLowerCase();
         if (text.includes('de-install') || text.includes('de installation')) return 'deinstall';
+        if (text.includes('initialization') || text.includes('initialisation')) return 'initial';
         if (text.includes('install') || text.includes('installation')) return 'install';
         if (text.includes('service') || text.includes('ตรวจเช็ค') || text.includes('เปลี่ยนเครื่อง')) return 'service';
         return 'install';
       }
       for (const row of fieldRows) {
         const category = dashboardJobCategory(row);
-        if (category === 'deinstall') addRow(deinstall, row);
-        else if (category === 'service') addRow(service, row);
-        else addRow(install, row);
+        fieldTerminals.add(row['Terminal ID'] || row['TID'] || '-');
+        if (category === 'deinstall') addRow(deinstall, row, category);
+        else if (category === 'initial') addRow(initial, row, category);
+        else if (category === 'service') addRow(service, row, category);
+        else addRow(install, row, category);
       }
       for (const row of (report.remainingJobs || [])) {
-        addRow(service, row);
+        const terminal = row['Terminal ID'] || row['TID'] || '-';
+        if (fieldTerminals.has(terminal)) continue;
+        addRow(service, row, 'service');
       }
-      const total = service.length + install.length + deinstall.length;
+      const total = service.length + initial.length + install.length + deinstall.length;
       jobBadges.innerHTML =
         '<span class="badge">รวม <b>' + total + '</b></span>'
         + '<span class="badge green">Service <b>' + service.length + '</b></span>'
+        + '<span class="badge purple">Initial <b>' + initial.length + '</b></span>'
         + '<span class="badge blue">Install <b>' + install.length + '</b></span>'
         + '<span class="badge amber">De-install <b>' + deinstall.length + '</b></span>';
 
@@ -1358,6 +1380,7 @@ function pageHtml() {
       } else {
         let rows = '';
         service.forEach((r) => { rows += jobRowHtml('Service', 'service', r); });
+        initial.forEach((r) => { rows += jobRowHtml('Initial', 'initial', r); });
         install.forEach((r) => { rows += jobRowHtml('Install', 'install', r); });
         deinstall.forEach((r) => { rows += jobRowHtml('De-install', 'deinstall', r); });
         jobTables.innerHTML = '<div class="table-wrap"><table><thead><tr>'
@@ -1384,7 +1407,7 @@ function pageHtml() {
       ];
       const fieldJobs = [
         { 'TID': 'F1111111', 'ชื่อร้านค้า': 'CP Fresh Mart เมืองชลบุรี', 'จังหวัด': 'ชลบุรี', 'ประเภทงาน': 'Install', 'Detail Plan Date': today },
-        { 'TID': 'F2222222', 'ชื่อร้านค้า': 'Big C บ้านบึง', 'จังหวัด': 'ชลบุรี', 'ประเภทงาน': 'Install', 'Detail Plan Date': today },
+        { 'TID': 'F2222222', 'ชื่อร้านค้า': 'Big C บ้านบึง', 'จังหวัด': 'ชลบุรี', 'ประเภทงาน': 'Initialization', 'Detail Plan Date': today },
         { 'TID': 'F3333333', 'ชื่อร้านค้า': 'Makro บ่อทอง', 'จังหวัด': 'ชลบุรี', 'ประเภทงาน': 'De-install', 'Detail Plan Date': today },
       ];
       const message = [
@@ -1392,9 +1415,10 @@ function pageHtml() {
         'Service',
         'T1234567',
         'T7654321',
+        'Initial',
+        'F2222222',
         'Install',
         'F1111111',
-        'F2222222',
         'De-install',
         'F3333333',
         'ชลบุรี',
